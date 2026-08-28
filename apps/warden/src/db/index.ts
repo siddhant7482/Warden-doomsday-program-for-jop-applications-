@@ -19,7 +19,21 @@ const globalForDb = globalThis as unknown as {
 
 const client =
   globalForDb.__wardenClient ??
-  postgres(url, { max: POOL_MAX, onnotice: () => {} });
+  postgres(url, {
+    max: POOL_MAX,
+    onnotice: () => {},
+    /* Postgres lives in its own container and will restart — updates,
+     * reboots, a `docker compose down`. Without these, the pool keeps
+     * handing out sockets to a server that no longer exists and every
+     * query fails until the app itself is restarted.
+     *
+     * idle_timeout retires connections that have been sitting unused,
+     * max_lifetime caps even busy ones, and connect_timeout stops a
+     * request hanging indefinitely when the database is still coming up. */
+    idle_timeout: 30,
+    max_lifetime: 60 * 30,
+    connect_timeout: 10,
+  });
 
 if (process.env.NODE_ENV !== "production") globalForDb.__wardenClient = client;
 
