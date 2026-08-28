@@ -1,0 +1,13 @@
+{
+  "name": "commandhq",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personal infrastructure server. Apps and provisioning.",
+  "scripts": {
+    "db:up": "docker compose -f docker-compose.dev.yml up -d",
+    "db:down": "docker compose -f docker-compose.dev.yml down",
+    "db:nuke": "docker compose -f docker-compose.dev.yml down -v",
+    "warden": "pnpm --filter warden dev"
+  },
+  "packageManager": "pnpm@10.18.3"
+}

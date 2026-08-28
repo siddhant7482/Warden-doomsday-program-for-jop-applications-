@@ -1,0 +1,40 @@
+{
+  "name": "warden",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "seed": "tsx src/db/seed.ts",
+    "ingest": "tsx src/pipeline/run.ts",
+    "ingest:llm": "tsx src/pipeline/run.ts --llm",
+    "check:llm": "tsx src/lib/check-openrouter.ts",
+    "check:parsers": "tsx src/pipeline/check-parsers.ts",
+    "check:engine": "tsx src/lib/engine.check.ts",
+    "sync": "tsx src/gmail/run-sync.ts",
+    "sync:dry": "tsx src/gmail/run-sync.ts --dry --llm",
+    "check:gmail": "tsx src/gmail/check-gmail.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "next": "16.3.3",
+    "postgres": "^3.4.9",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.23.12",
+    "typescript": "^5"
+  },
+  "packageManager": "pnpm@10.18.3"
+}

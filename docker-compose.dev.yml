@@ -1,0 +1,24 @@
+# Local development database.
+# Production Postgres lives in CT 100 on the ThinkCentre; connection strings
+# differ only by host, so nothing else changes when we deploy.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: commandhq-dev-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: commandhq
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: warden
+    ports:
+      - "5433:5432"          # 5433 avoids clashing with any local install
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U commandhq"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

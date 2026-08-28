@@ -1,0 +1,588 @@
+<title>Warden</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500&display=swap">
+
+<style>
+  /* ============================================================
+     WARDEN — the enforcement arm of CommandHQ
+     Two views, one visual world.
+       TODAY    - enforcement. The ground inverts as you fall behind.
+       PIPELINE - record. Always ink on paper. Never shouts.
+     The state IS the theme, so there is no light/dark switch:
+     every colour is painted explicitly.
+     ============================================================ */
+
+  :root {
+    --bg:     #DEDAD1;
+    --fg:     #0B0B0C;
+    --accent: #2F5D4F;
+    --rule:   rgba(11,11,12,.22);
+    --dim:    rgba(11,11,12,.54);
+    --alert:  #C8231C;
+    --warm:   #B8862B;
+
+    --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --sans:  "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --fat:   "Archivo Black", "Archivo", Impact, sans-serif;
+    --serif: "Newsreader", "Times New Roman", serif;
+  }
+
+  .app[data-state="clear"]    { --bg:#DEDAD1; --fg:#0B0B0C; --accent:#2F5D4F; --rule:rgba(11,11,12,.22);   --dim:rgba(11,11,12,.54); }
+  .app[data-state="drift"]    { --bg:#0B0B0C; --fg:#DEDAD1; --accent:#B8862B; --rule:rgba(222,218,209,.20); --dim:rgba(222,218,209,.52); }
+  .app[data-state="breach"]   { --bg:#0B0B0C; --fg:#DEDAD1; --accent:#C8231C; --rule:rgba(222,218,209,.22); --dim:rgba(222,218,209,.56); }
+  .app[data-state="terminal"] { --bg:#C8231C; --fg:#F2ECE4; --accent:#0B0B0C; --rule:rgba(11,11,12,.38);   --dim:rgba(11,11,12,.74); }
+
+  /* PIPELINE forces the calm palette whatever TODAY is doing */
+  .pipeline { --bg:#DEDAD1; --fg:#0B0B0C; --accent:#2F5D4F; --rule:rgba(11,11,12,.22); --dim:rgba(11,11,12,.54); }
+
+  * { box-sizing: border-box; }
+
+  body { margin: 0; background: #0B0B0C; color: #DEDAD1; font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+
+  .app { background: var(--bg); color: var(--fg); min-height: 100vh; display: flex; flex-direction: column;
+         transition: background-color .16s steps(3), color .16s steps(3); }
+  @media (prefers-reduced-motion: reduce) { .app, .app * { transition: none !important; animation: none !important; } }
+
+  /* ---------- equipment bar ---------- */
+  .bar { display: flex; align-items: stretch; justify-content: space-between; gap: .5rem; flex-wrap: wrap;
+         border-bottom: 1px solid var(--rule); font-family: var(--mono); font-size: .68rem;
+         letter-spacing: .14em; text-transform: uppercase; }
+  .bar > * { padding: .72rem 1.15rem; display: flex; align-items: center; gap: 1.4rem; flex-wrap: wrap; }
+  .bar .id { border-right: 1px solid var(--rule); font-weight: 700; letter-spacing: .3em; font-size: .78rem; }
+  .bar .parent { color: var(--dim); letter-spacing: .18em; border-right: 1px solid var(--rule); }
+  .bar .meta { color: var(--dim); }
+  .nav { gap: 0 !important; padding: 0 !important; border-left: 1px solid var(--rule); }
+  .nav button { font: inherit; letter-spacing: .16em; text-transform: uppercase; background: none; color: var(--dim);
+                border: 0; border-right: 1px solid var(--rule); padding: .72rem 1.15rem; cursor: pointer; }
+  .nav button:hover { color: var(--fg); }
+  .nav button[aria-current="true"] { background: var(--fg); color: var(--bg); }
+  .nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; }
+  .statechip { background: var(--accent); color: var(--bg); padding: .3em .75em; font-weight: 700; letter-spacing: .2em; }
+
+  /* ================= TODAY ================= */
+  .today { flex: 1; display: grid; grid-template-columns: minmax(240px, 20rem) 1fr; }
+  @media (max-width: 880px) { .today { grid-template-columns: 1fr; } }
+
+  .ledger { border-right: 1px solid var(--rule); font-family: var(--mono); }
+  @media (max-width: 880px) { .ledger { border-right: 0; border-bottom: 1px solid var(--rule); } }
+
+  .meter { padding: 1.15rem; border-bottom: 1px solid var(--rule); }
+  .meter-label { display: flex; justify-content: space-between; font-size: .64rem; letter-spacing: .14em;
+                 text-transform: uppercase; color: var(--dim); margin-bottom: .62rem; }
+  .meter-label b { color: var(--fg); }
+  .track { height: 10px; border: 1px solid var(--rule); display: flex; }
+  .fill { background: var(--accent); transition: width .2s ease; }
+  .pace { width: 2px; background: var(--fg); opacity: .8; margin-left: auto; }
+
+  dl { margin: 0; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: .8rem 1.15rem; border-bottom: 1px solid var(--rule); }
+  .row dt { color: var(--dim); letter-spacing: .1em; text-transform: uppercase; font-size: .655rem; margin: 0; }
+  .row dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; font-size: .95rem; }
+  .row dd.warn { color: var(--accent); }
+
+  .field { padding: clamp(1.3rem, 4vw, 3rem) clamp(1.3rem, 4vw, 3.4rem); display: flex; flex-direction: column; gap: 1.7rem; }
+  .eyebrow { font-family: var(--mono); font-size: .68rem; letter-spacing: .24em; text-transform: uppercase; color: var(--dim); }
+
+  .hero { display: flex; align-items: flex-start; gap: clamp(1rem, 3vw, 2.4rem); flex-wrap: wrap; }
+  .numeral { font-family: var(--fat); font-size: clamp(6.5rem, 20vw, 15rem); line-height: .74; letter-spacing: -.045em; font-variant-numeric: tabular-nums; margin: 0; }
+  .numeral-side { padding-top: .55rem; max-width: 24ch; }
+  .numeral-label { font-family: var(--sans); font-weight: 700; font-size: clamp(.95rem, 1.5vw, 1.12rem); text-transform: uppercase; letter-spacing: .04em; line-height: 1.22; text-wrap: balance; margin: 0 0 .55rem; }
+  .numeral-sub { font-family: var(--mono); font-size: .75rem; color: var(--dim); line-height: 1.65; margin: 0; white-space: pre-line; }
+
+  .notice { border-top: 2px solid var(--fg); border-bottom: 1px solid var(--rule); padding: 1.35rem 0; }
+  .notice-head { font-family: var(--mono); font-size: .655rem; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: .95rem; }
+  .message { font-family: var(--sans); font-weight: 600; font-size: clamp(1.05rem, 2.2vw, 1.6rem); line-height: 1.34; letter-spacing: -.012em; max-width: 36ch; margin: 0; text-wrap: balance; }
+  .app[data-state="breach"] .message,
+  .app[data-state="terminal"] .message { font-family: var(--serif); font-weight: 400; font-size: clamp(1.3rem, 2.9vw, 2.1rem); line-height: 1.24; letter-spacing: -.005em; max-width: 30ch; }
+  .message b { color: var(--accent); font-weight: inherit; }
+  .app[data-state="terminal"] .message b { text-decoration: underline; text-underline-offset: .16em; }
+
+  .actions { display: flex; align-items: center; gap: 1.4rem; flex-wrap: wrap; }
+  .log { font-family: var(--mono); font-weight: 700; font-size: .82rem; letter-spacing: .18em; text-transform: uppercase; background: var(--fg); color: var(--bg); border: 0; padding: 1.05rem 2.15rem; cursor: pointer; transition: transform .06s ease, background-color .12s ease; }
+  .log:hover { background: var(--accent); color: var(--bg); }
+  .log:active { transform: translateY(2px); }
+  .log:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .skip { font-family: var(--mono); font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); background: none; border: 0; border-bottom: 1px solid var(--rule); padding: .32rem 0; cursor: pointer; }
+  .skip:hover { color: var(--fg); border-color: var(--fg); }
+  .skip:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  .queue { border: 1px solid var(--rule); padding: 1.15rem 1.25rem; display: flex; gap: 1.2rem; justify-content: space-between; flex-wrap: wrap; align-items: flex-end; }
+  .queue-label { font-family: var(--mono); font-size: .62rem; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); margin-bottom: .5rem; }
+  .queue-role { font-family: var(--sans); font-weight: 700; font-size: 1.02rem; margin: 0; letter-spacing: -.012em; }
+  .queue-co { font-family: var(--mono); font-size: .755rem; color: var(--dim); margin: .28rem 0 0; }
+  .queue-tag { font-family: var(--mono); font-size: .62rem; letter-spacing: .14em; text-transform: uppercase; border: 1px solid var(--rule); padding: .32em .65em; color: var(--dim); }
+
+  .track-wrap { border-top: 1px solid var(--rule); padding: 1.15rem clamp(1.3rem, 4vw, 3.4rem) 1.45rem; }
+  .track-head { font-family: var(--mono); font-size: .64rem; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); margin-bottom: .9rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .scroll-x { overflow-x: auto; }
+  .rungs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; min-width: 540px; }
+  .rung { border-top: 3px solid var(--rule); padding-top: .62rem; opacity: .38; }
+  .rung.past { opacity: 1; border-top-color: var(--fg); }
+  .rung.now { opacity: 1; border-top-color: var(--accent); }
+  .rung .d { font-family: var(--mono); font-size: .62rem; letter-spacing: .14em; color: var(--dim); }
+  .rung .w { font-family: var(--sans); font-weight: 700; font-size: .8rem; letter-spacing: -.01em; margin-top: .2rem; }
+  .rung.now .w { color: var(--accent); }
+
+  /* ================= PIPELINE ================= */
+  .pipeline { flex: 1; background: var(--bg); color: var(--fg); display: none; flex-direction: column; }
+  .pipeline[data-on="true"] { display: flex; }
+
+  .funnel { display: grid; grid-template-columns: repeat(6, 1fr); border-bottom: 1px solid var(--rule); }
+  @media (max-width: 900px) { .funnel { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 520px) { .funnel { grid-template-columns: repeat(2, 1fr); } }
+  .fcell { padding: 1.2rem 1.15rem 1.3rem; border-right: 1px solid var(--rule); border-bottom: 1px solid transparent; }
+  .fcell:last-child { border-right: 0; }
+  .fnum { font-family: var(--fat); font-size: clamp(2rem, 4.2vw, 3.1rem); line-height: .9; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+  .fnum.bad { color: var(--alert); }
+  .flabel { font-family: var(--mono); font-size: .625rem; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); margin-top: .55rem; }
+  .fsub { font-family: var(--mono); font-size: .68rem; color: var(--dim); margin-top: .2rem; font-variant-numeric: tabular-nums; }
+
+  .attention { border-bottom: 1px solid var(--rule); }
+  .att-head { font-family: var(--mono); font-size: .64rem; letter-spacing: .2em; text-transform: uppercase; padding: .85rem clamp(1.15rem, 4vw, 1.6rem) .3rem; color: var(--alert); font-weight: 700; }
+  .att-row { display: flex; gap: 1.2rem; align-items: baseline; justify-content: space-between; flex-wrap: wrap; padding: .9rem clamp(1.15rem, 4vw, 1.6rem); border-top: 1px solid var(--rule); border-left: 4px solid var(--alert); }
+  .att-what { font-family: var(--sans); font-weight: 700; font-size: 1rem; letter-spacing: -.012em; }
+  .att-what span { font-family: var(--mono); font-weight: 400; font-size: .74rem; color: var(--dim); display: block; margin-top: .25rem; letter-spacing: .02em; }
+  .att-when { font-family: var(--mono); font-size: .78rem; font-weight: 700; color: var(--alert); text-transform: uppercase; letter-spacing: .1em; white-space: nowrap; }
+
+  .filters { display: flex; gap: .45rem; flex-wrap: wrap; align-items: center; padding: .85rem clamp(1.15rem, 4vw, 1.6rem); border-bottom: 1px solid var(--rule); font-family: var(--mono); font-size: .64rem; letter-spacing: .16em; text-transform: uppercase; }
+  .filters > span { color: var(--dim); margin-right: .5rem; }
+  .filters button { font: inherit; letter-spacing: inherit; text-transform: inherit; background: none; color: var(--dim); border: 1px solid var(--rule); padding: .44em .9em; cursor: pointer; }
+  .filters button:hover { color: var(--fg); border-color: var(--fg); }
+  .filters button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .filters button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  table { border-collapse: collapse; width: 100%; min-width: 920px; font-family: var(--mono); font-size: .78rem; }
+  thead th { text-align: left; font-size: .615rem; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); font-weight: 500; padding: .7rem clamp(.55rem, 1.6vw, .95rem); border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  thead th:first-child { padding-left: clamp(1.15rem, 4vw, 1.6rem); }
+  tbody td { padding: .8rem clamp(.55rem, 1.6vw, .95rem); border-bottom: 1px solid var(--rule); vertical-align: middle; }
+  tbody td:first-child { padding-left: clamp(1.15rem, 4vw, 1.6rem); }
+  tbody tr.app-row { cursor: pointer; }
+  tbody tr.app-row:hover { background: rgba(11,11,12,.045); }
+  tbody tr.app-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .co { font-family: var(--sans); font-weight: 700; font-size: .93rem; letter-spacing: -.01em; }
+  .ro { color: var(--dim); font-size: .735rem; margin-top: .15rem; }
+  .loc { font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
+  .pay { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; font-size: .8rem; }
+  .pay.none { font-weight: 400; color: var(--dim); font-size: .715rem; text-transform: uppercase; letter-spacing: .1em; }
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .via { font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
+
+  .open { font-size: .64rem; letter-spacing: .14em; text-transform: uppercase; color: var(--dim);
+          text-decoration: none; border-bottom: 1px solid var(--rule); padding-bottom: .12rem; white-space: nowrap; }
+  .open:hover { color: var(--accent); border-color: var(--accent); }
+  .open:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  .pill { display: inline-block; font-size: .615rem; letter-spacing: .13em; text-transform: uppercase; font-weight: 700; padding: .35em .6em; white-space: nowrap; border: 1px solid currentColor; }
+  .pill.interview  { background: var(--alert); color: #F2ECE4; border-color: var(--alert); }
+  .pill.assessment { color: var(--alert); border-color: var(--alert); }
+  .pill.progress   { color: var(--accent); border-color: var(--accent); }
+  .pill.applied    { color: var(--dim); border-color: var(--rule); }
+  .pill.rejected   { color: var(--dim); border-color: var(--rule); opacity: .8; }
+  .pill.ghosted    { color: var(--dim); border-color: transparent; border-bottom: 1px solid var(--rule); opacity: .75; }
+
+  .decay { display: flex; align-items: center; gap: .55rem; }
+  .decay-track { width: 58px; height: 6px; border: 1px solid var(--rule); flex: none; }
+  .decay-fill { height: 100%; background: var(--dim); }
+  .decay-fill.warn { background: var(--warm); }
+  .decay-fill.dead { background: var(--alert); }
+  .decay-days { font-size: .7rem; color: var(--dim); font-variant-numeric: tabular-nums; }
+
+  tr.dead-row .co, tr.dead-row .ro, tr.dead-row .num, tr.dead-row .pay { opacity: .48; }
+
+  tr.trail > td { padding: 0 0 0 clamp(1.15rem, 4vw, 1.6rem); border-bottom: 1px solid var(--rule); background: rgba(11,11,12,.035); }
+  .trail-inner { padding: 1rem 1rem 1.15rem 0; }
+  .trail-head { font-size: .61rem; letter-spacing: .18em; text-transform: uppercase; color: var(--dim); margin-bottom: .75rem; }
+  .ev { display: flex; gap: .9rem; align-items: baseline; padding: .32rem 0; border-left: 1px solid var(--rule); padding-left: .95rem; margin-left: .2rem; }
+  .ev-date { font-size: .7rem; color: var(--dim); width: 5.6rem; flex: none; font-variant-numeric: tabular-nums; }
+  .ev-what { font-size: .76rem; }
+  .ev-from { color: var(--dim); }
+
+  .foot { padding: 1.1rem clamp(1.15rem, 4vw, 1.6rem) 1.6rem; font-family: var(--mono); font-size: .68rem; color: var(--dim); line-height: 1.7; border-top: 1px solid var(--rule); }
+  .foot b { color: var(--fg); font-weight: 500; }
+
+  /* ---- stacked ledger rows on small screens ---- */
+  @media (max-width: 780px) {
+    table { min-width: 0; }
+    thead { display: none; }
+    tbody, tbody tr, tbody td { display: block; width: 100%; }
+    tbody tr.app-row { padding: 1rem clamp(1.15rem, 4vw, 1.6rem); border-bottom: 1px solid var(--rule); }
+    tbody td { border: 0; padding: .18rem 0; }
+    tbody td:first-child { padding-left: 0; padding-bottom: .5rem; }
+    tbody td[data-label] { display: flex; align-items: baseline; gap: .8rem; }
+    tbody td[data-label]::before {
+      content: attr(data-label); flex: none; width: 5.4rem;
+      color: var(--dim); font-size: .615rem; letter-spacing: .14em; text-transform: uppercase;
+    }
+    tr.trail > td { padding-left: clamp(1.15rem, 4vw, 1.6rem); }
+    .decay-track { width: 78px; }
+  }
+
+  /* ---------- prototype control ---------- */
+  .sim { border-top: 1px solid var(--rule); display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; padding: .72rem clamp(1.3rem, 4vw, 3.4rem); font-family: var(--mono); font-size: .64rem; letter-spacing: .16em; text-transform: uppercase; }
+  .sim > span { color: var(--dim); margin-right: .45rem; }
+  .sim button { font: inherit; letter-spacing: inherit; text-transform: inherit; background: none; color: var(--dim); border: 1px solid var(--rule); padding: .44em .9em; cursor: pointer; }
+  .sim button:hover { color: var(--fg); border-color: var(--fg); }
+  .sim button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .sim button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .flash { animation: flash .2s steps(2); }
+  @keyframes flash { 0%, 100% { filter: none; } 50% { filter: invert(1); } }
+</style>
+
+<div class="app" id="app" data-state="clear">
+
+  <div class="bar">
+    <div class="id">WARDEN</div>
+    <div class="parent">COMMANDHQ &middot; NODE 105</div>
+    <div class="nav">
+      <button id="navToday" aria-current="true">Today</button>
+      <button id="navPipe" aria-current="false">Pipeline</button>
+    </div>
+    <div class="meta"><span>08 SEP &middot; 09:14 GMT</span><span>CYCLE 08 / 30</span></div>
+    <div><span class="statechip" id="chip">CLEAR</span></div>
+  </div>
+
+  <!-- ============ TODAY ============ -->
+  <main class="today" id="viewToday">
+    <div class="ledger">
+      <div class="meter">
+        <div class="meter-label"><span>September</span><span><b id="mDone">29</b> / 100</span></div>
+        <div class="track"><div class="fill" id="mFill" style="width:29%"></div><div class="pace"></div></div>
+      </div>
+      <dl>
+        <div class="row"><dt>Required rate</dt><dd id="rate">3.2 / day</dd></div>
+        <div class="row"><dt>Floor today</dt><dd id="floor">3</dd></div>
+        <div class="row"><dt>Logged today</dt><dd id="today">3</dd></div>
+        <div class="row"><dt>Days missed</dt><dd id="missed">0</dd></div>
+        <div class="row"><dt>Rest days banked</dt><dd id="rest">1</dd></div>
+        <div class="row"><dt>Awaiting reply</dt><dd>20</dd></div>
+        <div class="row"><dt>Needs you</dt><dd class="warn">4</dd></div>
+        <div class="row"><dt>Interviews booked</dt><dd>2</dd></div>
+      </dl>
+    </div>
+
+    <div class="field">
+      <div class="eyebrow" id="eyebrow">Status &mdash; 08 September</div>
+      <div class="hero">
+        <p class="numeral" id="bigNum">0</p>
+        <div class="numeral-side">
+          <p class="numeral-label" id="bigLabel">Applications still required today</p>
+          <p class="numeral-sub" id="bigSub">Floor cleared 09:11. Nothing fires today.</p>
+        </div>
+      </div>
+      <div class="notice">
+        <div class="notice-head">
+          <span id="noticeKind">System note</span>
+          <span id="noticeStamp">No escalation active</span>
+        </div>
+        <p class="message" id="message">Floor cleared. 29 of 100. You are <b>two ahead of pace</b>. That is all this screen has to say to you today.</p>
+      </div>
+      <div class="actions">
+        <button class="log" id="logBtn">Log application</button>
+        <button class="skip" id="skipBtn">Skip this one</button>
+      </div>
+      <div class="queue">
+        <div>
+          <div class="queue-label">Next in queue &mdash; one at a time</div>
+          <p class="queue-role">Graduate Data Analyst</p>
+          <p class="queue-co">Octopus Energy &middot; London &middot; &pound;33,000 &middot; Greenhouse &middot; est. 2 min</p>
+        </div>
+        <div class="queue-tag" id="queueTag">Quick apply</div>
+      </div>
+    </div>
+  </main>
+
+  <div class="track-wrap" id="ladderWrap">
+    <div class="track-head">
+      <span>Escalation ladder</span>
+      <span id="ladderNote">Resets only on action &mdash; never on time</span>
+    </div>
+    <div class="scroll-x">
+      <div class="rungs">
+        <div class="rung" data-day="1"><div class="d">Day 1</div><div class="w">Notification</div></div>
+        <div class="rung" data-day="2"><div class="d">Day 2</div><div class="w">Full screen</div></div>
+        <div class="rung" data-day="3"><div class="d">Day 3</div><div class="w">Warning</div></div>
+        <div class="rung" data-day="4"><div class="d">Day 4</div><div class="w">Aakash</div></div>
+        <div class="rung" data-day="6"><div class="d">Day 6</div><div class="w">Rhea</div></div>
+        <div class="rung" data-day="9"><div class="d">Day 9</div><div class="w">Dev</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PIPELINE ============ -->
+  <section class="pipeline" id="viewPipe" data-on="false">
+    <div class="funnel">
+      <div class="fcell"><div class="fnum">187</div><div class="flabel">Applied</div><div class="fsub">since 12 Jun</div></div>
+      <div class="fcell"><div class="fnum">105</div><div class="flabel">Replied</div><div class="fsub">56.1%</div></div>
+      <div class="fcell"><div class="fnum">97</div><div class="flabel">Rejected</div><div class="fsub">51.9%</div></div>
+      <div class="fcell"><div class="fnum bad">62</div><div class="flabel">Ghosted</div><div class="fsub">60 days silent</div></div>
+      <div class="fcell"><div class="fnum">26</div><div class="flabel">Still live</div><div class="fsub">4 need you</div></div>
+      <div class="fcell"><div class="fnum">2</div><div class="flabel">Interviews</div><div class="fsub">1.1% of applied</div></div>
+    </div>
+
+    <div class="attention">
+      <div class="att-head">Needs you &mdash; 4</div>
+      <div class="att-row"><div class="att-what">Interview &mdash; Monzo<span>Junior Analyst, Risk &middot; video &middot; 45 min</span></div><div class="att-when">Thu 11 Sep &middot; 14:30</div></div>
+      <div class="att-row"><div class="att-what">Interview &mdash; Trainline<span>Data Analyst, Graduate &middot; onsite, London Bridge</span></div><div class="att-when">Mon 15 Sep &middot; 10:00</div></div>
+      <div class="att-row"><div class="att-what">Assessment &mdash; Revolut<span>SHL numerical + logic &middot; 55 min</span></div><div class="att-when">Closes in 2 days</div></div>
+      <div class="att-row"><div class="att-what">Assessment &mdash; Sky<span>HackerRank, SQL + Python &middot; 90 min</span></div><div class="att-when">Closes in 6 days</div></div>
+    </div>
+
+    <div class="filters">
+      <span>Filter</span>
+      <button data-filter="all" aria-pressed="true">All 187</button>
+      <button data-filter="need" aria-pressed="false">Needs you 4</button>
+      <button data-filter="live" aria-pressed="false">Live 26</button>
+      <button data-filter="dead" aria-pressed="false">Dead 159</button>
+    </div>
+
+    <div class="scroll-x">
+      <table>
+        <thead>
+          <tr>
+            <th>Company</th><th>Location</th><th>Salary</th><th>Via</th><th>Applied</th><th>Status</th><th>Silence</th><th>Posting</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="foot">
+      Silence bar fills over <b>60 days</b>. At 60 an application is marked <b>ghosted</b> automatically and drops out of Live &mdash;
+      no reply is a reply. Click any row for the email trail the pipeline built it from.
+    </div>
+  </section>
+
+  <div class="sim" id="simBar">
+    <span>Prototype &mdash; simulate</span>
+    <button data-sim="clear" aria-pressed="true">On pace</button>
+    <button data-sim="drift" aria-pressed="false">Day 2</button>
+    <button data-sim="breach" aria-pressed="false">Day 4</button>
+    <button data-sim="terminal" aria-pressed="false">Day 7</button>
+  </div>
+</div>
+
+<script>
+  var STATES = {
+    clear: {
+      chip: "CLEAR", day: 0, missed: 0, done: 29, today: 3, floor: 3, rate: "3.2 / day", rest: "1",
+      eyebrow: "Status — 08 September", num: "0", label: "Applications still required today",
+      sub: "Floor cleared 09:11. Nothing fires today.",
+      kind: "System note", stamp: "No escalation active",
+      msg: "Floor cleared. 29 of 100. You are <b>two ahead of pace</b>. That is all this screen has to say to you today.",
+      ladder: "Resets only on action — never on time"
+    },
+    drift: {
+      chip: "DRIFT", day: 2, missed: 2, done: 29, today: 0, floor: 4, rate: "3.5 / day", rest: "0",
+      eyebrow: "Day 2 — no applications logged", num: "2", label: "Days since you last applied",
+      sub: "Rate was 3.2 on Monday.\nIt is 3.5 now. You moved it, not me.",
+      kind: "Notice 01", stamp: "Nobody has been told",
+      msg: "Two days. Zero applications. The required rate moved from 3.2 to <b>3.5 a day</b> while you did nothing. Nobody has been told yet.",
+      ladder: "Two rungs from Aakash"
+    },
+    breach: {
+      chip: "BREACH", day: 4, missed: 4, done: 29, today: 0, floor: 5, rate: "4.3 / day", rest: "0",
+      eyebrow: "Day 4 — escalation armed", num: "4", label: "Days since you last applied",
+      sub: "Ladder fires 09:00 tomorrow.\nOne application stops it. One.",
+      kind: "Notice 03 — final warning", stamp: "Aakash notified in 19h 42m",
+      msg: "Four days. The rate is <b>4.3 and climbing while you read this.</b> Tomorrow at 09:00 Aakash gets an email saying exactly this. One application stops it.",
+      ladder: "Aakash notified in 19h 42m"
+    },
+    terminal: {
+      chip: "TERMINAL", day: 7, missed: 7, done: 29, today: 0, floor: 8, rate: "6.8 / day", rest: "0",
+      eyebrow: "Day 7 — two witnesses notified", num: "7", label: "Days since you last applied",
+      sub: "Aakash: told Tuesday.\nRhea: told 09:00 this morning.\nDev: 09:00 tomorrow.",
+      kind: "Notice 06 — non-compliance", stamp: "Dev notified in 22h 08m",
+      msg: "Seven days. Twenty-nine applications this month, none this week. You told three people you were grinding. You are not grinding — you are <b>fucking coasting</b>, and Dev finds out at 09:00 tomorrow.",
+      ladder: "Dev notified in 22h 08m"
+    }
+  };
+
+  var app = document.getElementById("app");
+  var live = { done: 29, today: 3, floor: 3 };
+  function set(id, v) { document.getElementById(id).textContent = v; }
+  function each(sel, fn) { Array.prototype.forEach.call(document.querySelectorAll(sel), fn); }
+
+  function paint(key) {
+    var s = STATES[key];
+    live.done = s.done; live.today = s.today; live.floor = s.floor;
+    app.setAttribute("data-state", key);
+    set("chip", s.chip); set("eyebrow", s.eyebrow); set("bigNum", s.num);
+    set("bigLabel", s.label); set("bigSub", s.sub); set("noticeKind", s.kind);
+    set("noticeStamp", s.stamp); set("ladderNote", s.ladder); set("rate", s.rate);
+    set("floor", s.floor); set("today", s.today); set("mDone", s.done); set("rest", s.rest);
+    document.getElementById("message").innerHTML = s.msg;
+    document.getElementById("mFill").style.width = s.done + "%";
+    var m = document.getElementById("missed");
+    m.textContent = s.missed; m.className = s.missed > 0 ? "warn" : "";
+    each(".rung", function (r) {
+      var d = +r.getAttribute("data-day");
+      r.className = "rung" + (d < s.day ? " past" : d === s.day ? " now" : "");
+    });
+    each(".sim button", function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-sim") === key ? "true" : "false");
+    });
+  }
+
+  each(".sim button", function (b) {
+    b.addEventListener("click", function () { paint(b.getAttribute("data-sim")); });
+  });
+
+  document.getElementById("logBtn").addEventListener("click", function () {
+    live.done += 1; live.today += 1;
+    var left = Math.max(0, live.floor - live.today);
+    app.classList.remove("flash"); void app.offsetWidth; app.classList.add("flash");
+    set("mDone", live.done); set("today", live.today); set("bigNum", left);
+    set("bigLabel", "Applications still required today");
+    set("bigSub", left === 0 ? "Floor cleared. The ladder resets to zero." : left + " to go. The ladder is still armed.");
+    document.getElementById("mFill").style.width = live.done + "%";
+    if (left === 0) {
+      app.setAttribute("data-state", "clear");
+      set("chip", "CLEAR"); set("noticeKind", "System note");
+      set("noticeStamp", "No escalation active"); set("missed", "0");
+      set("ladderNote", "Resets only on action — never on time");
+      document.getElementById("missed").className = "";
+      document.getElementById("message").innerHTML =
+        "Floor cleared. Ladder reset. Nobody gets told anything today. <b>Come back tomorrow.</b>";
+      each(".rung", function (r) { r.className = "rung"; });
+    }
+  });
+
+  document.getElementById("skipBtn").addEventListener("click", function () {
+    var roles = [
+      ["Junior Analyst, Risk", "Monzo · London · £42,000 · Ashby · est. 2 min", "Quick apply"],
+      ["Data Engineer, Graduate", "Ocado Technology · Hatfield · £34,000 · Workday · est. 18 min", "Slow — Workday"],
+      ["Business Analyst", "Starling Bank · London · £45,000 · Lever · est. 3 min", "Quick apply"],
+      ["Graduate Data Analyst", "Octopus Energy · London · £33,000 · Greenhouse · est. 2 min", "Quick apply"]
+    ];
+    var p = roles[Math.floor(Math.random() * roles.length)];
+    document.querySelector(".queue-role").textContent = p[0];
+    document.querySelector(".queue-co").textContent = p[1];
+    set("queueTag", p[2]);
+  });
+
+  /* silence = days since last contact. 60 = auto-ghost. */
+  var APPS = [
+    { co:"Monzo", ro:"Junior Analyst, Risk", loc:"London", pay:"£42,000", via:"Ashby", applied:"18 Aug", silence:3, status:"interview", label:"Interview 11 Sep", group:"need", url:"https://monzo.com/careers",
+      trail:[["18 Aug","Application received","no-reply@ashbyhq.com"],["21 Aug","Moved to screening","talent@monzo.com"],["02 Sep","Assessment passed","no-reply@ashbyhq.com"],["05 Sep","Interview confirmed — Thu 11 Sep 14:30","talent@monzo.com"]] },
+    { co:"Trainline", ro:"Data Analyst, Graduate", loc:"London", pay:"£35,000", via:"Greenhouse", applied:"22 Aug", silence:4, status:"interview", label:"Interview 15 Sep", group:"need", url:"https://www.thetrainline.com/about/careers",
+      trail:[["22 Aug","Application received","no-reply@greenhouse.io"],["29 Aug","Phone screen invitation","recruiting@trainline.com"],["04 Sep","Interview confirmed — Mon 15 Sep 10:00","recruiting@trainline.com"]] },
+    { co:"Revolut", ro:"Analytics Associate", loc:"London", pay:"£38,000", via:"LinkedIn", applied:"27 Aug", silence:2, status:"assessment", label:"Closes in 2d", group:"need", url:"https://www.revolut.com/careers/",
+      trail:[["27 Aug","Your application was sent","jobs-noreply@linkedin.com"],["01 Sep","Application received","careers@revolut.com"],["06 Sep","SHL assessment — expires 10 Sep","no-reply@shl.com"]] },
+    { co:"Sky", ro:"Junior Data Scientist", loc:"Osterley", pay:"£40,000", via:"Workday", applied:"25 Aug", silence:5, status:"assessment", label:"Closes in 6d", group:"need", url:"https://careers.sky.com/",
+      trail:[["25 Aug","Application received","sky@myworkday.com"],["03 Sep","HackerRank invite — expires 14 Sep","no-reply@hackerrank.com"]] },
+
+    { co:"Starling Bank", ro:"Business Analyst", loc:"London", pay:"£45,000", via:"Lever", applied:"01 Sep", silence:6, status:"progress", label:"In review", group:"live", url:"https://www.starlingbank.com/careers/",
+      trail:[["01 Sep","Application received","no-reply@hire.lever.co"],["02 Sep","Your CV is with the hiring team","people@starlingbank.com"]] },
+    { co:"Wise", ro:"Data Analyst, Graduate", loc:"London", pay:"£38,000", via:"Greenhouse", applied:"29 Aug", silence:7, status:"progress", label:"In review", group:"live", url:"https://www.wise.jobs/",
+      trail:[["29 Aug","Application received","no-reply@greenhouse.io"],["01 Sep","Shortlisted for review","hiring@wise.com"]] },
+    { co:"Octopus Energy", ro:"Graduate Data Analyst", loc:"London", pay:"£33,000", via:"Greenhouse", applied:"06 Sep", silence:2, status:"applied", label:"No reply", group:"live", url:"https://octopus.energy/careers/",
+      trail:[["06 Sep","Application received","no-reply@greenhouse.io"]] },
+    { co:"Deliveroo", ro:"Analytics Graduate", loc:"London", pay:"£36,000", via:"LinkedIn", applied:"04 Sep", silence:4, status:"applied", label:"No reply", group:"live", url:"https://careers.deliveroo.co.uk/",
+      trail:[["04 Sep","Your application was sent","jobs-noreply@linkedin.com"]] },
+    { co:"Depop", ro:"Junior Data Analyst", loc:"London", pay:"", via:"Indeed", applied:"31 Aug", silence:8, status:"applied", label:"No reply", group:"live", url:"https://www.depop.com/careers/",
+      trail:[["31 Aug","Application submitted","noreply@indeed.com"]] },
+    { co:"Ocado Technology", ro:"Data Engineer, Graduate", loc:"Hatfield", pay:"£34,000", via:"Workday", applied:"19 Aug", silence:20, status:"applied", label:"No reply", group:"live", url:"https://careers.ocadogroup.com/",
+      trail:[["19 Aug","Application received","ocado@myworkday.com"]] },
+    { co:"Darktrace", ro:"Junior ML Engineer", loc:"Cambridge", pay:"£40,000", via:"Workday", applied:"11 Aug", silence:28, status:"applied", label:"No reply", group:"live", url:"https://darktrace.com/careers",
+      trail:[["11 Aug","Application received","darktrace@myworkday.com"]] },
+    { co:"Zopa", ro:"Risk Analyst", loc:"London", pay:"£37,000", via:"Lever", applied:"02 Aug", silence:37, status:"applied", label:"No reply", group:"live", url:"https://jobs.zopa.com/",
+      trail:[["02 Aug","Application received","no-reply@hire.lever.co"]] },
+    { co:"ASOS", ro:"BI Developer, Junior", loc:"London", pay:"£35,000", via:"Workday", applied:"24 Jul", silence:46, status:"applied", label:"No reply", group:"live", url:"https://www.asos.com/careers/",
+      trail:[["24 Jul","Application received","asos@myworkday.com"]] },
+    { co:"Centrica", ro:"Data Analyst, Graduate", loc:"Windsor", pay:"", via:"Workday", applied:"18 Jul", silence:52, status:"applied", label:"No reply", group:"live", url:"https://www.centrica.com/careers/",
+      trail:[["18 Jul","Application received","centrica@myworkday.com"]] },
+    { co:"National Grid", ro:"Graduate Analyst", loc:"Warwick", pay:"£33,000", via:"Reed", applied:"12 Jul", silence:58, status:"applied", label:"Ghosts in 2d", group:"live", url:"https://careers.nationalgrid.com/",
+      trail:[["12 Jul","Application sent","noreply@reed.co.uk"]] },
+
+    { co:"Vodafone", ro:"Data Analyst", loc:"Newbury", pay:"£34,000", via:"Workday", applied:"09 Aug", silence:12, status:"rejected", label:"Rejected", group:"dead", url:"https://careers.vodafone.com/",
+      trail:[["09 Aug","Application received","vodafone@myworkday.com"],["27 Aug","Update on your application","vodafone@myworkday.com"]] },
+    { co:"Rolls-Royce", ro:"Graduate Data Scientist", loc:"Derby", pay:"£32,000", via:"Workday", applied:"28 Jul", silence:19, status:"rejected", label:"Rejected", group:"dead", url:"https://careers.rolls-royce.com/",
+      trail:[["28 Jul","Application received","rr@myworkday.com"],["20 Aug","Unsuccessful this time","rr@myworkday.com"]] },
+    { co:"Tesco", ro:"Analytics Graduate", loc:"Welwyn GC", pay:"£30,000", via:"Indeed", applied:"21 Jul", silence:24, status:"rejected", label:"Rejected", group:"dead", url:"https://www.tesco-careers.com/",
+      trail:[["21 Jul","Application submitted","noreply@indeed.com"],["15 Aug","Not progressing","careers@tesco.com"]] },
+    { co:"Bulb", ro:"Junior Data Analyst", loc:"London", pay:"", via:"LinkedIn", applied:"05 Jul", silence:65, status:"ghosted", label:"Ghosted", group:"dead", url:"https://bulb.co.uk/careers/",
+      trail:[["05 Jul","Your application was sent","jobs-noreply@linkedin.com"],["—","No further contact in 60 days","system"]] },
+    { co:"Cazoo", ro:"Data Analyst", loc:"London", pay:"£33,000", via:"LinkedIn", applied:"28 Jun", silence:72, status:"ghosted", label:"Ghosted", group:"dead", url:"https://www.cazoo.co.uk/careers/",
+      trail:[["28 Jun","Your application was sent","jobs-noreply@linkedin.com"],["—","No further contact in 60 days","system"]] },
+    { co:"BT", ro:"Graduate Data Analyst", loc:"London", pay:"£32,000", via:"Workday", applied:"20 Jun", silence:80, status:"ghosted", label:"Ghosted", group:"dead", url:"https://www.bt.com/careers",
+      trail:[["20 Jun","Application received","bt@myworkday.com"],["—","No further contact in 60 days","system"]] }
+  ];
+
+  function decayClass(d) { return d >= 60 ? "dead" : d >= 45 ? "warn" : ""; }
+
+  function renderTable(filter) {
+    var tb = document.getElementById("tbody");
+    tb.innerHTML = "";
+    APPS.forEach(function (a) {
+      if (filter !== "all" && a.group !== filter) return;
+      var pct = Math.min(100, Math.round(a.silence / 60 * 100));
+      var isDead = a.group === "dead";
+      var payCell = a.pay
+        ? '<span class="pay">' + a.pay + '</span>'
+        : '<span class="pay none">Not stated</span>';
+
+      var tr = document.createElement("tr");
+      tr.className = "app-row" + (isDead ? " dead-row" : "");
+      tr.setAttribute("tabindex", "0");
+      tr.innerHTML =
+        '<td><div class="co">' + a.co + '</div><div class="ro">' + a.ro + '</div></td>' +
+        '<td data-label="Location"><span class="loc">' + a.loc + '</span></td>' +
+        '<td data-label="Salary">' + payCell + '</td>' +
+        '<td data-label="Via"><span class="via">' + a.via + '</span></td>' +
+        '<td data-label="Applied"><span class="num">' + a.applied + '</span></td>' +
+        '<td data-label="Status"><span class="pill ' + a.status + '">' + a.label + '</span></td>' +
+        '<td data-label="Silence"><div class="decay"><div class="decay-track"><div class="decay-fill ' + decayClass(a.silence) +
+          '" style="width:' + pct + '%"></div></div><div class="decay-days">' + a.silence + 'd</div></div></td>' +
+        '<td data-label="Posting"><a class="open" href="' + a.url + '" target="_blank" rel="noopener">Open</a></td>';
+
+      var trail = document.createElement("tr");
+      trail.className = "trail";
+      trail.style.display = "none";
+      var evs = a.trail.map(function (e) {
+        return '<div class="ev"><div class="ev-date">' + e[0] + '</div>' +
+               '<div class="ev-what">' + e[1] + ' <span class="ev-from">&mdash; ' + e[2] + '</span></div></div>';
+      }).join("");
+      trail.innerHTML = '<td colspan="8"><div class="trail-inner"><div class="trail-head">' +
+        'Email trail &mdash; ' + a.trail.length + ' messages matched to this application</div>' + evs + '</div></td>';
+
+      function toggle() { trail.style.display = trail.style.display === "none" ? "table-row" : "none"; }
+      tr.addEventListener("click", function (e) {
+        if (e.target.closest("a")) return;   /* let the posting link through */
+        toggle();
+      });
+      tr.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+      });
+
+      tb.appendChild(tr);
+      tb.appendChild(trail);
+    });
+  }
+
+  each(".filters button", function (b) {
+    b.addEventListener("click", function () {
+      each(".filters button", function (o) { o.setAttribute("aria-pressed", "false"); });
+      b.setAttribute("aria-pressed", "true");
+      renderTable(b.getAttribute("data-filter"));
+    });
+  });
+
+  function view(which) {
+    var isToday = which === "today";
+    document.getElementById("viewToday").style.display = isToday ? "grid" : "none";
+    document.getElementById("ladderWrap").style.display = isToday ? "block" : "none";
+    document.getElementById("simBar").style.display = isToday ? "flex" : "none";
+    document.getElementById("viewPipe").setAttribute("data-on", isToday ? "false" : "true");
+    document.getElementById("navToday").setAttribute("aria-current", isToday ? "true" : "false");
+    document.getElementById("navPipe").setAttribute("aria-current", isToday ? "false" : "true");
+  }
+  document.getElementById("navToday").addEventListener("click", function () { view("today"); });
+  document.getElementById("navPipe").addEventListener("click", function () { view("pipe"); });
+
+  renderTable("all");
+  paint("clear");
+  view("today");
+</script>
