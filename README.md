@@ -161,13 +161,15 @@ pnpm --filter warden sync --dry      # real Gmail, writes nothing
 Working: ingestion, resolution, auto-ghosting, the enforcement engine,
 both screens, OpenRouter.
 
-Built but unarmed: Gmail sync. Nothing connects to a real mailbox until
-the server is up.
+Built but unarmed, both deliberately:
 
-Built but unarmed: the witness emails and the nightly job. The ladder is
-evaluated and sent by `warden-tick` at 09:00, but `settings.armed`
-defaults to false and arming is refused while any witness still has a
-placeholder address — an armed bluff is worse than an unarmed one.
+**Gmail sync.** Nothing connects to a real mailbox until the server is
+up, so the OAuth redirect URI gets registered once against the real host.
+
+**The witness emails.** The ladder is evaluated and sent by
+`warden-tick` at 09:00, but `settings.armed` defaults to false and
+arming is refused while any witness still has a placeholder address — an
+armed bluff is worse than an unarmed one.
 
 ```bash
 pnpm --filter warden tick          # dry run: exactly what would send
