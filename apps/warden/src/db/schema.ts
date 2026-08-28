@@ -292,6 +292,12 @@ export const settings = pgTable("settings", {
   restDayMultiple: real("rest_day_multiple").notNull().default(2.5),
   /** 0 = clinical, 1 = as written. Turning it down beats abandoning it. */
   tone: real("tone").notNull().default(1.0),
+  /** Nothing is emailed to a witness until this is deliberately turned
+   *  on. The ladder is calculated and displayed either way — arming only
+   *  decides whether it reaches another human. */
+  armed: boolean("armed").notNull().default(false),
+  /** How the witnesses are told to refer to him. */
+  userName: text("user_name").notNull().default("Siddh"),
   timezone: text("timezone").notNull().default("Europe/London"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

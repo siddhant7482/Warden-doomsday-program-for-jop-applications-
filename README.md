@@ -164,5 +164,14 @@ both screens, OpenRouter.
 Built but unarmed: Gmail sync. Nothing connects to a real mailbox until
 the server is up.
 
-Not built: the witness emails and the nightly job that fires the ladder.
-Escalation is calculated and displayed; nothing sends yet.
+Built but unarmed: the witness emails and the nightly job. The ladder is
+evaluated and sent by `warden-tick` at 09:00, but `settings.armed`
+defaults to false and arming is refused while any witness still has a
+placeholder address — an armed bluff is worse than an unarmed one.
+
+```bash
+pnpm --filter warden tick          # dry run: exactly what would send
+pnpm --filter warden tick --arm    # turn it on
+```
+
+See [deploy/](deploy/) for the systemd units.

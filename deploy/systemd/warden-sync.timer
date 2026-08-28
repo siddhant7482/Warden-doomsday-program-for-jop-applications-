@@ -1,0 +1,13 @@
+[Unit]
+Description=Warden mail sync
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=15min
+# Two mailboxes at 15-minute intervals is far inside Gmail's quota, and
+# nothing here is urgent enough to poll harder.
+RandomizedDelaySec=2min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

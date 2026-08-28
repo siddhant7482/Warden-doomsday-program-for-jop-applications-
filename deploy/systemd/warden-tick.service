@@ -1,0 +1,12 @@
+[Unit]
+Description=Warden — evaluate the escalation ladder and fire what is due
+After=network-online.target warden-sync.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/warden
+EnvironmentFile=/srv/warden/apps/warden/.env.local
+# --send still defers to settings.armed; disarming stops mail without
+# touching this unit.
+ExecStart=/usr/bin/pnpm --filter warden tick --send

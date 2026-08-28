@@ -91,7 +91,10 @@ export interface TodayModel {
   interviewsBooked: number;
 }
 
-export async function getToday(now = new Date()): Promise<TodayModel> {
+/* Shared by the Today screen and the nightly job. Deliberately does not
+ * generate the daily message — the job runs unattended and must not
+ * spend an API call just to decide whether to send an email. */
+export async function computeState(now = new Date()) {
   const cfg = await getSettings();
   const esc = await getEscalation();
   const people = await db.select().from(witnesses).where(eq(witnesses.active, true));
@@ -122,6 +125,12 @@ export async function getToday(now = new Date()): Promise<TodayModel> {
     restDaysBanked: esc.restDaysBanked,
     witnesses: people.map((w) => ({ name: w.name, triggerDay: w.triggerDay })),
   });
+
+  return { engine, cfg, esc, people, lastAppliedAt: last?.at ?? null, consecutiveMisses };
+}
+
+export async function getToday(now = new Date()): Promise<TodayModel> {
+  const { engine, cfg, people, consecutiveMisses } = await computeState(now);
 
   const ladder: TodayModel["ladder"] = [
     { day: 1, label: "Notification" },

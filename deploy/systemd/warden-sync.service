@@ -1,0 +1,13 @@
+[Unit]
+Description=Warden — pull new mail and update the pipeline
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/warden
+EnvironmentFile=/srv/warden/apps/warden/.env.local
+ExecStart=/usr/bin/pnpm --filter warden sync --llm
+# Reading mail should never contend with anything the user is doing.
+Nice=10
+IOSchedulingClass=idle

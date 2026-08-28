@@ -17,11 +17,13 @@
     "check:engine": "tsx src/lib/engine.check.ts",
     "sync": "tsx src/gmail/run-sync.ts",
     "sync:dry": "tsx src/gmail/run-sync.ts --dry --llm",
-    "check:gmail": "tsx src/gmail/check-gmail.ts"
+    "check:gmail": "tsx src/gmail/check-gmail.ts",
+    "tick": "tsx src/jobs/run-tick.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",
     "next": "16.3.3",
+    "nodemailer": "^9.0.6",
     "postgres": "^3.4.9",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -29,6 +31,7 @@
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv": "^17.4.2",

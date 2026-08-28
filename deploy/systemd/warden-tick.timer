@@ -1,0 +1,12 @@
+[Unit]
+Description=Warden escalation ladder
+
+[Timer]
+# 09:00 exactly, because the messages promise "09:00 tomorrow" by name.
+# A ladder that fires at a different time than it threatened is a ladder
+# you learn to ignore.
+OnCalendar=*-*-* 09:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
