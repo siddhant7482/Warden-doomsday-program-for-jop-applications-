@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!--
+    The escalation ladder: three rungs, each one longer than the last,
+    the top one already red. It is the single idea Warden runs on, and
+    three blocks survive being shrunk into a browser tab where a "W"
+    would turn to mush.
+
+    Ink on bone, which is what the app looks like when it is calm.
+  -->
+  <rect width="32" height="32" rx="7" fill="#DEDAD1"/>
+
+  <g fill="#0B0B0C">
+    <rect x="6" y="20.5" width="11" height="5" rx="1.2"/>
+    <rect x="6" y="13.5" width="16" height="5" rx="1.2"/>
+  </g>
+  <rect x="6" y="6.5" width="20" height="5" rx="1.2" fill="#C8231C"/>
+</svg>
